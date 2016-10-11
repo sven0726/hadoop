@@ -19,6 +19,7 @@
 package org.apache.hadoop.mapreduce.lib.output;
 
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -306,7 +307,9 @@ public class FileOutputCommitter extends OutputCommitter {
     if (hasOutputPath()) {
       Path finalOutput = getOutputPath();
       FileSystem fs = finalOutput.getFileSystem(context.getConfiguration());
-      for(FileStatus stat: getAllCommittedTaskPaths(context)) {
+      FileStatus[] stats = getAllCommittedTaskPaths(context);
+      for(FileStatus stat: stats) {
+        LOG.info("===> Root dir " + stat.getPath().toString() + " to " + finalOutput);
         mergePaths(fs, stat, finalOutput);
       }
 
@@ -335,40 +338,41 @@ public class FileOutputCommitter extends OutputCommitter {
       final Path to)
     throws IOException {
      LOG.debug("Merging data from "+from+" to "+to);
-     if(from.isFile()) {
-       if(fs.exists(to)) {
-         if(!fs.delete(to, true)) {
-           throw new IOException("Failed to delete "+to);
-         }
-       }
-
-       if(!fs.rename(from.getPath(), to)) {
-         throw new IOException("Failed to rename "+from+" to "+to);
-       }
-     } else if(from.isDirectory()) {
-       if(fs.exists(to)) {
-         FileStatus toStat = fs.getFileStatus(to);
-         if(!toStat.isDirectory()) {
-           if(!fs.delete(to, true)) {
-             throw new IOException("Failed to delete "+to);
-           }
-           if(!fs.rename(from.getPath(), to)) {
-             throw new IOException("Failed to rename "+from+" to "+to);
-           }
-         } else {
-           //It is a directory so merge everything in the directories
-           for(FileStatus subFrom: fs.listStatus(from.getPath())) {
-             Path subTo = new Path(to, subFrom.getPath().getName());
-             mergePaths(fs, subFrom, subTo);
-           }
-         }
-       } else {
-         //it does not exist just rename
-         if(!fs.rename(from.getPath(), to)) {
-           throw new IOException("Failed to rename "+from+" to "+to);
-         }
-       }
-     }
+     fs.rename(from.getPath(), to);
+//     if(from.isFile()) {
+//       if(fs.exists(to)) {
+//         if(!fs.delete(to, true)) {
+//           throw new IOException("Failed to delete "+to);
+//         }
+//       }
+//
+//       if(!fs.rename(from.getPath(), to)) {
+//         throw new IOException("Failed to rename "+from+" to "+to);
+//       }
+//     } else if(from.isDirectory()) {
+//       if(fs.exists(to)) {
+//         FileStatus toStat = fs.getFileStatus(to);
+//         if(!toStat.isDirectory()) {
+//           if(!fs.delete(to, true)) {
+//             throw new IOException("Failed to delete "+to);
+//           }
+//           if(!fs.rename(from.getPath(), to)) {
+//             throw new IOException("Failed to rename "+from+" to "+to);
+//           }
+//         } else {
+//           //It is a directory so merge everything in the directories
+//           for(FileStatus subFrom: fs.listStatus(from.getPath())) {
+//             Path subTo = new Path(to, subFrom.getPath().getName());
+//             mergePaths(fs, subFrom, subTo);
+//           }
+//         }
+//       } else {
+//         //it does not exist just rename
+//         if(!fs.rename(from.getPath(), to)) {
+//           throw new IOException("Failed to rename "+from+" to "+to);
+//         }
+//       }
+//     }
   }
 
   @Override
